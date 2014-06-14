@@ -35,14 +35,18 @@ import urlparse
 
 rgb_re = re.compile("^.*?rgb[(]([0-9]+).*?([0-9]+).*?([0-9]+)[)].*?[ ]*$")
 
-_reportlab_version = tuple(map(int, reportlab.Version.split('.')))
-if _reportlab_version < (2,1):
-    raise ImportError("Reportlab Version 2.1+ is needed!")
-
-REPORTLAB22 = _reportlab_version >= (2, 2)
+# if not (reportlab.Version[0] == "2" and reportlab.Version[2] >= "1"):
+#     raise ImportError("Reportlab Version 2.1+ is needed!")
+#
+# REPORTLAB22 = (reportlab.Version[0] == "2" and reportlab.Version[2] >= "2")
 # print "***", reportlab.Version, REPORTLAB22, reportlab.__file__
 
-log = logging.getLogger("xhtml2pdf")
+if not (reportlab.Version[:3] >="2.1"):
+    raise ImportError("Reportlab Version 2.1+ is needed!")
+
+REPORTLAB22 = (reportlab.Version[:3] >="2.1")
+
+# log = logging.getLogger("xhtml2pdf")
 
 try:
     import cStringIO as StringIO
@@ -50,9 +54,9 @@ except:
     import StringIO
 
 try:
-    import PyPDF2
+    import pyPdf
 except:
-    PyPDF2 = None
+    pyPdf = None
 
 try:
     from reportlab.graphics import renderPM
@@ -94,14 +98,10 @@ class memoized(object):
         # trying to memoize
         args_plus = tuple(kwargs.iteritems())
         key = (args, args_plus)
-        try:
-            if key not in self.cache:
-                res = self.func(*args, **kwargs)
-                self.cache[key] = res
-            return self.cache[key]
-        except TypeError:
-            # happens if any of the parameters is a list
-            return self.func(*args, **kwargs)
+        if key not in self.cache:
+            res = self.func(*args, **kwargs)
+            self.cache[key] = res
+        return self.cache[key]
 
 
 def ErrorMsg():
@@ -259,11 +259,11 @@ def getSize(value, relative=0, base=None, default=0.0):
         try:
             value = float(value)
         except:
-            log.warn("getSize: Not a float %r", value)
+            # log.warn("getSize: Not a float %r", value)
             return default  # value = 0
         return max(0, value)
     except Exception:
-        log.warn("getSize %r %r", original, relative, exc_info=1)
+        # log.warn("getSize %r %r", original, relative, exc_info=1)
         return default
 
 
@@ -439,7 +439,7 @@ class pisaTempFile(object):
                 new_delegate.write(self.getvalue())
                 self._delegate = new_delegate
                 self.strategy = 1
-                log.warn("Created temporary file %s", self.name)
+                # log.warn("Created temporary file %s", self.name)
             except:
                 self.capacity = - 1
 
@@ -513,8 +513,9 @@ class pisaFileObject:
         self.uri = None
         self.local = None
         self.tmp_file = None
-        uri = uri.encode('utf-8')
-        log.debug("FileObject %r, Basepath: %r", uri, basepath)
+
+        uri = str(uri)
+        # log.debug("FileObject %r, Basepath: %r", uri, basepath)
 
         # Data URI
         if uri.startswith("data:"):
@@ -529,7 +530,7 @@ class pisaFileObject:
             else:
                 urlParts = urlparse.urlparse(uri)
 
-            log.debug("URLParts: %r", urlParts)
+            # log.debug("URLParts: %r", urlParts)
 
             if urlParts.scheme == 'file':
                 if basepath and uri.startswith('/'):
